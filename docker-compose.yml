@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: payroll
+      POSTGRES_PASSWORD: payroll
+      POSTGRES_DB: payrollpro
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payroll"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgres://payroll:payroll@db:5432/payrollpro
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev-access}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh}
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      BOOTSTRAP_ADMIN_EMAIL: admin@acme.ph
+      BOOTSTRAP_ADMIN_PASSWORD: ChangeMe!2024
+    ports:
+      - "4000:4000"
+    command: sh -c "node src/db.js migrate && node src/seed.js && node src/server.js"
+
+volumes:
+  pgdata:
