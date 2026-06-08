@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PayrollPro</title>
+<style>
+  :root{--bg:#f6f7f9;--card:#fff;--ink:#1c1d1f;--sub:#6b6f76;--line:#e7e8ea;--brand:#2266dd;--brand2:#1b4fb0;--ok:#1a7f4b;--warn:#b7791f;--bad:#c0392b;--shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
+  button{font-family:inherit;cursor:pointer}
+  a{color:var(--brand);text-decoration:none}
+  .hidden{display:none!important}
+  /* Login */
+  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#eef3fb,#f6f7f9)}
+  .login-card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:34px;width:100%;max-width:380px}
+  .logo{width:46px;height:46px;border-radius:12px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;margin-bottom:14px}
+  h1{font-size:20px;margin:0 0 2px}
+  .muted{color:var(--sub);font-size:13px}
+  label{display:block;font-weight:600;font-size:12.5px;margin:14px 0 5px}
+  input,select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff;color:var(--ink)}
+  input:focus,select:focus{outline:none;border-color:var(--brand)}
+  .btn{background:var(--brand);color:#fff;border:none;border-radius:9px;padding:11px 16px;font-weight:600;font-size:14px;width:100%}
+  .btn:hover{background:var(--brand2)}
+  .btn.sm{width:auto;padding:7px 13px;font-size:13px}
+  .btn.ghost{background:#eef1f5;color:var(--ink)}
+  .btn.ghost:hover{background:#e3e7ee}
+  .btn.danger{background:var(--bad)}
+  .err{background:#fdecea;color:var(--bad);padding:9px 12px;border-radius:8px;font-size:13px;margin-top:12px}
+  .info{background:#eef5ff;color:var(--brand2);padding:9px 12px;border-radius:8px;font-size:13px;margin-top:12px}
+  /* App shell */
+  .shell{display:flex;min-height:100vh}
+  .side{width:230px;background:#15171a;color:#cfd3d8;display:flex;flex-direction:column;padding:16px 12px;position:fixed;height:100vh}
+  .side .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 16px;color:#fff;font-weight:700}
+  .side .brand .logo{width:34px;height:34px;font-size:18px;margin:0}
+  .nav button{display:flex;align-items:center;gap:10px;width:100%;background:none;border:none;color:#cfd3d8;padding:10px 12px;border-radius:8px;font-size:14px;text-align:left}
+  .nav button:hover{background:#23262b;color:#fff}
+  .nav button.active{background:var(--brand);color:#fff}
+  .side .foot{margin-top:auto;font-size:12px;color:#7b8087;padding:8px}
+  .main{margin-left:230px;flex:1;display:flex;flex-direction:column}
+  .top{background:#fff;border-bottom:1px solid var(--line);padding:14px 26px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:5}
+  .top h2{margin:0;font-size:18px}
+  .top .who{margin-left:auto;text-align:right;font-size:12.5px;color:var(--sub)}
+  .content{padding:26px;max-width:1150px;width:100%}
+  /* Cards & grids */
+  .grid{display:grid;gap:16px}
+  .stats{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:18px;box-shadow:var(--shadow)}
+  .stat .n{font-size:28px;font-weight:700}
+  .stat .l{color:var(--sub);font-size:13px;margin-top:2px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
+  th{color:var(--sub);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+  tr:hover td{background:#fafbfc}
+  .chip{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11.5px;font-weight:600}
+  .chip.ok{background:#e6f4ec;color:var(--ok)} .chip.warn{background:#fdf3e3;color:var(--warn)} .chip.bad{background:#fdecea;color:var(--bad)} .chip.neutral{background:#eef1f5;color:var(--sub)} .chip.brand{background:#e8f0fd;color:var(--brand2)}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .peso{font-variant-numeric:tabular-nums}
+  .section-title{font-size:15px;font-weight:700;margin:0 0 4px}
+  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+  .spacer{flex:1}
+  .spinner{display:inline-block;width:15px;height:15px;border:2px solid #ffffff66;border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px}
+  .spinner.dark{border:2px solid #00000022;border-top-color:var(--brand)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .empty{padding:40px;text-align:center;color:var(--sub)}
+  /* Modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .modal{background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .modal header{display:flex;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line)}
+  .modal header h3{margin:0;font-size:16px}
+  .modal .body{padding:20px}
+  .modal .x{margin-left:auto;background:none;border:none;font-size:22px;color:var(--sub);line-height:1}
+  .kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
+  .kv span:first-child{color:var(--sub)}
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:#191918;color:#fff;padding:11px 18px;border-radius:10px;font-size:13.5px;font-weight:500;opacity:0;transition:.25s;z-index:100;pointer-events:none}
+  @media(max-width:760px){.side{position:static;width:100%;height:auto;flex-direction:row;overflow-x:auto}.main{margin-left:0}.side .foot{display:none}.nav{display:flex}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login" class="login-wrap">
+  <div class="login-card">
+    <div class="logo">₱</div>
+    <h1>PayrollPro</h1>
+    <div class="muted">Sign in to your payroll workspace</div>
+    <label>Email</label>
+    <input id="email" type="email" value="admin@acme.ph" autocomplete="username" />
+    <label>Password</label>
+    <input id="password" type="password" placeholder="Your password" autocomplete="current-password" />
+    <div id="totpWrap" class="hidden"><label>2FA code</label><input id="totp" inputmode="numeric" placeholder="6-digit code" /></div>
+    <div style="height:14px"></div>
+    <button class="btn" id="loginBtn" onclick="doLogin()">Sign in</button>
+    <div id="loginMsg"></div>
+    <details style="margin-top:18px">
+      <summary class="muted" style="cursor:pointer">Advanced: API server URL</summary>
+      <label>Backend API base URL</label>
+      <input id="apiBase" />
+      <div class="muted" style="margin-top:6px">Default points to your Render server. Change only if your API is hosted elsewhere.</div>
+    </details>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="shell hidden">
+  <aside class="side">
+    <div class="brand"><div class="logo">₱</div> PayrollPro</div>
+    <div class="nav" id="nav"></div>
+    <div class="foot">Backend: <span id="apiLabel"></span><br/><a href="#" onclick="logout();return false" style="color:#9fb6e6">Sign out</a></div>
+  </aside>
+  <div class="main">
+    <div class="top">
+      <h2 id="viewTitle">Dashboard</h2>
+      <div class="who"><div id="whoName"></div><div id="whoRole"></div></div>
+    </div>
+    <div class="content" id="view"></div>
+  </div>
+</div>
+
+<div id="modalRoot"></div>
+<div id="toast"></div>
+
+<script>
+// ====== Config & state ======
+const DEFAULT_API = 'https://payrollpro-api.onrender.com';
+let API = localStorage.getItem('pp_api') || DEFAULT_API;
+let token = localStorage.getItem('pp_token') || null;
+let me = JSON.parse(localStorage.getItem('pp_me') || 'null');
+
+const ROLE_LABEL = {HR_ADMIN:'HR Admin',FINANCE:'Finance',MANAGER:'Manager',EMPLOYEE:'Employee'};
+const $ = (id)=>document.getElementById(id);
+const peso = (n)=>'₱'+(Number(n)||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc = (s)=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(msg){const t=$('toast');t.textContent=msg;t.style.opacity='1';t.style.transform='translateX(-50%) translateY(0)';clearTimeout(t._t);t._t=setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(-50%) translateY(10px)';},2600);}
+
+// ====== API helper ======
+async function api(path, opts={}){
+  const headers = Object.assign({'Content-Type':'application/json'}, opts.headers||{});
+  if(token) headers['Authorization'] = 'Bearer '+token;
+  const res = await fetch(API+path, Object.assign({}, opts, {headers}));
+  if(res.status===401){ logout(); throw new Error('Session expired — please sign in again.'); }
+  const ct = res.headers.get('content-type')||'';
+  if(ct.includes('application/json')){
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || ('Error '+res.status));
+    return data;
+  }
+  if(!res.ok) throw new Error('Error '+res.status);
+  return res;
+}
+
+// ====== Auth ======
+async function doLogin(){
+  API = ($('apiBase').value||DEFAULT_API).replace(/\/$/,'');
+  localStorage.setItem('pp_api', API);
+  const email=$('email').value.trim(), password=$('password').value, totp=$('totp').value;
+  const btn=$('loginBtn'); const msg=$('loginMsg');
+  msg.innerHTML=''; btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Signing in…';
+  // Friendly note: free Render servers sleep and take ~40s to wake.
+  const slow=setTimeout(()=>{msg.innerHTML='<div class="info">Waking up the server… free hosting can take 30–50 seconds on the first request. Hang tight.</div>';},3500);
+  try{
+    const body={email,password}; if(totp) body.totp=totp;
+    const data = await api('/api/auth/login',{method:'POST',body:JSON.stringify(body)});
+    clearTimeout(slow);
+    token=data.accessToken; me=data.user;
+    localStorage.setItem('pp_token',token); localStorage.setItem('pp_me',JSON.stringify(me));
+    showApp();
+  }catch(e){
+    clearTimeout(slow);
+    if(String(e.message).includes('2FA')){ $('totpWrap').classList.remove('hidden'); msg.innerHTML='<div class="info">Enter your 2FA code to continue.</div>'; }
+    else msg.innerHTML='<div class="err">'+esc(e.message)+'</div>';
+  }finally{ btn.disabled=false; btn.innerHTML='Sign in'; }
+}
+function logout(){ token=null; me=null; localStorage.removeItem('pp_token'); localStorage.removeItem('pp_me'); $('app').classList.add('hidden'); $('login').classList.remove('hidden'); }
+
+// ====== Navigation ======
+const VIEWS = [
+  {id:'dashboard',label:'Dashboard',icon:'📊',roles:['HR_ADMIN','FINANCE','MANAGER']},
+  {id:'employees',label:'Employees',icon:'👥',roles:['HR_ADMIN','FINANCE','MANAGER']},
+  {id:'payroll',label:'Payroll Runs',icon:'💰',roles:['HR_ADMIN','FINANCE','MANAGER']},
+  {id:'reports',label:'Reports',icon:'📈',roles:['HR_ADMIN','FINANCE']},
+  {id:'audit',label:'Audit Log',icon:'🔍',roles:['HR_ADMIN','FINANCE']},
+  {id:'mypayslips',label:'My Payslips',icon:'🧾',roles:['EMPLOYEE','HR_ADMIN','FINANCE','MANAGER']},
+];
+let current='dashboard';
+function showApp(){
+  $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+  $('whoName').textContent=me.email; $('whoRole').innerHTML='<span class="chip brand">'+(ROLE_LABEL[me.role]||me.role)+'</span>';
+  $('apiLabel').textContent=API.replace('https://','');
+  const nav=$('nav'); nav.innerHTML='';
+  VIEWS.filter(v=>v.roles.includes(me.role)).forEach(v=>{
+    const b=document.createElement('button'); b.innerHTML='<span>'+v.icon+'</span><span>'+v.label+'</span>';
+    b.onclick=()=>go(v.id); b.dataset.id=v.id; nav.appendChild(b);
+  });
+  go(me.role==='EMPLOYEE'?'mypayslips':'dashboard');
+}
+function go(id){
+  current=id;
+  [...document.querySelectorAll('#nav button')].forEach(b=>b.classList.toggle('active',b.dataset.id===id));
+  const v=VIEWS.find(x=>x.id===id); $('viewTitle').textContent=v?v.label:id;
+  $('view').innerHTML='<div class="empty"><span class="spinner dark"></span> Loading…</div>';
+  ({dashboard:renderDashboard,employees:renderEmployees,payroll:renderPayroll,reports:renderReports,audit:renderAudit,mypayslips:renderMyPayslips}[id]||(()=>{}))();
+}
+function errBox(e){ $('view').innerHTML='<div class="card"><div class="err">'+esc(e.message)+'</div></div>'; }
+
+// ====== Views ======
+async function renderDashboard(){
+  try{
+    const d=await api('/api/dashboard');
+    const es=d.emailStatus||{};
+    $('view').innerHTML=`
+      <div class="grid stats">
+        <div class="card stat"><div class="n">${d.totalEmployees}</div><div class="l">Active employees</div></div>
+        <div class="card stat"><div class="n">${d.totalRuns}</div><div class="l">Payroll runs</div></div>
+        <div class="card stat"><div class="n">${d.pendingApprovals}</div><div class="l">Pending approvals</div></div>
+        <div class="card stat"><div class="n peso">${d.lastRun?peso(d.lastRun.total_net):'—'}</div><div class="l">Last run net pay</div></div>
+      </div>
+      <div style="height:16px"></div>
+      <div class="card">
+        <div class="section-title">Latest payroll run</div>
+        ${d.lastRun?`<div class="row" style="margin-top:8px"><b>${esc(d.lastRun.period_label)}</b> ${statusChip(d.lastRun.status)}
+          <span class="spacer"></span><span class="muted">Gross ${peso(d.lastRun.total_gross)} · Deductions ${peso(d.lastRun.total_ded)}</span></div>
+          <div class="row" style="margin-top:12px"><span class="chip ok">✉ Sent ${es.SENT||0}</span><span class="chip warn">⏳ Pending ${es.PENDING||0}</span><span class="chip bad">⚠ Failed ${es.FAILED||0}</span></div>`
+        :'<div class="muted" style="margin-top:6px">No payroll runs yet. Go to Payroll Runs to create one.</div>'}
+      </div>`;
+  }catch(e){errBox(e);}
+}
+function statusChip(s){const m={PREPARATION:'neutral',HR_REVIEW:'warn',FINANCE_APPROVAL:'warn',APPROVED:'brand',RELEASED:'ok',REJECTED:'bad'};return '<span class="chip '+(m[s]||'neutral')+'">'+s.replace(/_/g,' ')+'</span>';}
+
+async function renderEmployees(){
+  try{
+    const list=await api('/api/employees');
+    let rows=list.map(e=>`<tr><td>${esc(e.emp_no)}</td><td><b>${esc(e.first_name)} ${esc(e.last_name)}</b><br><span class="muted">${esc(e.email||'')}</span></td><td>${esc(e.position||'—')}</td><td>${esc(e.branch||'—')}</td><td><span class="chip ${e.status==='ACTIVE'?'ok':'neutral'}">${e.status}</span></td><td class="peso">${peso(e.basic_salary)}</td></tr>`).join('');
+    $('view').innerHTML=`<div class="toolbar"><div class="muted">${list.length} employees</div></div>
+      <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>ID</th><th>Name</th><th>Position</th><th>Branch</th><th>Status</th><th>Basic salary</th></tr></thead><tbody>${rows||'<tr><td colspan=6 class=empty>No employees</td></tr>'}</tbody></table></div>`;
+  }catch(e){errBox(e);}
+}
+
+async function renderPayroll(){
+  try{
+    const runs=await api('/api/payroll');
+    const canCreate = me.role==='HR_ADMIN';
+    let rows=runs.map(r=>`<tr onclick="openRun('${r.id}')" style="cursor:pointer"><td><b>${esc(r.period_label)}</b></td><td>${statusChip(r.status)}</td><td class=peso>${peso(r.total_gross)}</td><td class=peso>${peso(r.total_net)}</td><td class="muted">${new Date(r.created_at).toLocaleDateString()}</td></tr>`).join('');
+    $('view').innerHTML=`<div class="toolbar">${canCreate?'<button class="btn sm" onclick="newRunModal()">+ New payroll run</button>':''}<div class="spacer"></div><div class="muted">${runs.length} runs · click a row for details</div></div>
+      <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Period</th><th>Status</th><th>Gross</th><th>Net</th><th>Created</th></tr></thead><tbody>${rows||'<tr><td colspan=5 class=empty>No payroll runs yet</td></tr>'}</tbody></table></div>`;
+  }catch(e){errBox(e);}
+}
+function newRunModal(){
+  const def='Payroll '+new Date().toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});
+  openModal('New payroll run',`<label>Pay period label</label><input id="m_period" value="${esc(def)}"/><div class="muted" style="margin-top:8px">This computes payslips for all active employees using their latest attendance.</div>`,
+    `<button class="btn" onclick="createRun()">Build payroll run</button>`);
+}
+async function createRun(){
+  const period=$('m_period').value.trim(); if(!period)return;
+  const btn=event.target; btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Building…';
+  try{ const r=await api('/api/payroll',{method:'POST',body:JSON.stringify({period_label:period})}); closeModal(); toast('Run created for '+r.count+' employees'); openRun(r.run.id); }
+  catch(e){ btn.disabled=false; btn.innerHTML='Build payroll run'; toast(e.message); }
+}
+async function openRun(id){
+  try{
+    const {run,slips,approvals}=await api('/api/payroll/'+id);
+    const next={PREPARATION:['HR_ADMIN','Submit for HR review'],HR_REVIEW:['HR_ADMIN','HR approve → Finance'],FINANCE_APPROVAL:['FINANCE','Finance approve'],APPROVED:['FINANCE','Release payroll']}[run.status];
+    const canAdvance = next && me.role===next[0];
+    const slipRows=slips.map(s=>`<tr><td>${esc(s.slip_no)}</td><td class=peso>${peso(s.gross_pay)}</td><td class=peso>${peso(s.total_ded)}</td><td class=peso><b>${peso(s.net_pay)}</b></td><td><span class="chip ${s.email_status==='SENT'?'ok':s.email_status==='FAILED'?'bad':'neutral'}">${s.email_status}</span></td><td><button class="btn ghost sm" onclick="dlPdf('${s.id}','${esc(s.slip_no)}')">PDF</button></td></tr>`).join('');
+    const apprRows=approvals.map(a=>`<div class="kv"><span>${esc(a.action.replace(/_/g,' '))} · ${esc(a.actor_role||'')}</span><span>${new Date(a.created_at).toLocaleString()}</span></div>`).join('')||'<div class="muted">No actions yet</div>';
+    openModal('Run · '+esc(run.period_label),`
+      <div class="row">${statusChip(run.status)}<span class="spacer"></span><span class="muted">${slips.length} payslips</span></div>
+      <div class="row" style="margin:14px 0">
+        <button class="btn ghost sm" onclick="validateRun('${run.id}')">🧠 Run AI validation</button>
+        ${canAdvance?`<button class="btn sm" onclick="advanceRun('${run.id}')">${esc(next[1])}</button>`:''}
+        ${(me.role==='HR_ADMIN'&&run.status==='RELEASED')?`<button class="btn sm" onclick="emailRun('${run.id}')">✉ Email payslips</button>`:''}
+      </div>
+      <div id="valBox"></div>
+      <div class="section-title" style="margin-top:10px">Payslips</div>
+      <div style="overflow:auto;max-height:300px"><table><thead><tr><th>Slip</th><th>Gross</th><th>Ded.</th><th>Net</th><th>Email</th><th></th></tr></thead><tbody>${slipRows}</tbody></table></div>
+      <div class="section-title" style="margin-top:16px">Approval trail</div>${apprRows}
+    `,'');
+  }catch(e){toast(e.message);}
+}
+async function validateRun(id){
+  const box=$('valBox'); box.innerHTML='<div class="info"><span class="spinner dark"></span> Checking for anomalies…</div>';
+  try{ const {anomalies,passed}=await api('/api/payroll/'+id+'/validate');
+    if(!anomalies.length){ box.innerHTML='<div class="info">✅ No anomalies detected. Safe to proceed.</div>'; return; }
+    box.innerHTML='<div class="card" style="padding:12px"><b>'+(passed?'⚠ Warnings':'🛑 Critical issues')+' ('+anomalies.length+')</b>'+anomalies.map(a=>`<div class="kv"><span><span class="chip ${a.severity==='critical'?'bad':'warn'}">${a.type.replace(/_/g,' ')}</span></span><span>${esc(a.message)}</span></div>`).join('')+'</div>';
+  }catch(e){box.innerHTML='<div class="err">'+esc(e.message)+'</div>';}
+}
+async function advanceRun(id){ try{ const r=await api('/api/payroll/'+id+'/advance',{method:'POST'}); toast('Status → '+r.status.replace(/_/g,' ')); openRun(id); }catch(e){toast(e.message);} }
+async function emailRun(id){ try{ toast('Sending…'); const r=await api('/api/payslips/run/'+id+'/email',{method:'POST',body:JSON.stringify({})}); toast(`Sent ${r.sent}, failed ${r.failed} of ${r.total}`); openRun(id); }catch(e){toast(e.message);} }
+async function dlPdf(id,name){
+  try{ toast('Preparing PDF…'); const res=await api('/api/payslips/'+id+'/pdf'); const blob=await res.blob();
+    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name+'.pdf'; a.click(); URL.revokeObjectURL(url);
+  }catch(e){toast(e.message);}
+}
+
+async function renderReports(){
+  try{
+    const runs=await api('/api/payroll');
+    const released=runs.filter(r=>r.status==='RELEASED');
+    const opts=runs.map(r=>`<option value="${r.id}">${esc(r.period_label)} (${r.status})</option>`).join('');
+    $('view').innerHTML=`<div class="card"><div class="section-title">Run reports</div>
+      <div class="row" style="margin-top:10px"><select id="repRun" style="max-width:280px">${opts||'<option>No runs</option>'}</select>
+      <button class="btn ghost sm" onclick="repSummary()">Summary</button>
+      <button class="btn ghost sm" onclick="repGov()">Gov’t remittance</button></div>
+      <div id="repOut" style="margin-top:16px"></div></div>
+      <div style="height:16px"></div>
+      <div class="card"><div class="section-title">Cost analysis (released runs)</div><div id="costOut" class="muted" style="margin-top:8px">${released.length?'':'No released runs yet.'}</div></div>`;
+    if(released.length){ try{ const c=await api('/api/reports/cost-analysis'); $('costOut').innerHTML='<table><thead><tr><th>Period</th><th>Gross</th><th>Net</th></tr></thead><tbody>'+c.map(r=>`<tr><td>${esc(r.period_label)}</td><td class=peso>${peso(r.total_gross)}</td><td class=peso>${peso(r.total_net)}</td></tr>`).join('')+'</tbody></table>'; }catch{} }
+  }catch(e){errBox(e);}
+}
+async function repSummary(){ const id=$('repRun').value; try{ const d=await api('/api/reports/run/'+id+'/summary'); $('repOut').innerHTML='<table><thead><tr><th>Department</th><th>Head</th><th>Net</th></tr></thead><tbody>'+d.byDepartment.map(x=>`<tr><td>${esc(x.department)}</td><td>${x.headcount}</td><td class=peso>${peso(x.net)}</td></tr>`).join('')+'</tbody></table>'; }catch(e){$('repOut').innerHTML='<div class=err>'+esc(e.message)+'</div>';} }
+async function repGov(){ const id=$('repRun').value; try{ const d=await api('/api/reports/run/'+id+'/government'); const t=d.totals; $('repOut').innerHTML=`<div class="row"><span class="chip neutral">SSS ${peso(t.sss)}</span><span class="chip neutral">PhilHealth ${peso(t.philhealth)}</span><span class="chip neutral">Pag-IBIG ${peso(t.pagibig)}</span><span class="chip neutral">Tax ${peso(t.tax)}</span></div>`; }catch(e){$('repOut').innerHTML='<div class=err>'+esc(e.message)+'</div>';} }
+
+async function renderAudit(){
+  try{ const log=await api('/api/audit?limit=100');
+    $('view').innerHTML='<div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>When</th><th>Role</th><th>Action</th><th>Detail</th></tr></thead><tbody>'+log.map(a=>`<tr><td class="muted">${new Date(a.created_at).toLocaleString()}</td><td>${esc(a.actor_role||'—')}</td><td>${esc(a.action)}</td><td class="muted">${esc(a.detail||'')}</td></tr>`).join('')+'</tbody></table></div>';
+  }catch(e){errBox(e);}
+}
+
+async function renderMyPayslips(){
+  try{ const list=await api('/api/payslips/mine');
+    $('view').innerHTML=`<div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Slip</th><th>Period</th><th>Net</th><th></th></tr></thead><tbody>${list.map(s=>`<tr><td>${esc(s.slip_no)}</td><td>${esc(s.period_label)}</td><td class=peso><b>${peso(s.net_pay)}</b></td><td><button class="btn ghost sm" onclick="dlPdf('${s.id}','${esc(s.slip_no)}')">Download PDF</button></td></tr>`).join('')||'<tr><td colspan=4 class=empty>No released payslips yet</td></tr>'}</tbody></table></div>`;
+  }catch(e){errBox(e);}
+}
+
+// ====== Modal ======
+function openModal(title,bodyHtml,footerHtml){
+  $('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal"><header><h3>${esc(title)}</h3><button class="x" onclick="closeModal()">×</button></header><div class="body">${bodyHtml}${footerHtml?'<div style="margin-top:18px">'+footerHtml+'</div>':''}</div></div></div>`;
+}
+function closeModal(){ $('modalRoot').innerHTML=''; }
+
+// ====== Boot ======
+$('apiBase').value = API;
+if(token && me){ showApp(); }
+$('password').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+$('totp').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+</script>
+</body>
+</html>
