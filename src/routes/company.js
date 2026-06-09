@@ -112,9 +112,10 @@ router.put('/email', authorize('HR_ADMIN'), asyncH(async (req, res) => {
 router.post('/email/test', authorize('HR_ADMIN'), asyncH(async (req, res) => {
   const to = req.body && req.body.to ? String(req.body.to).trim() : '';
   if (!to) return res.status(400).json({ error: 'Provide a recipient email to test.' });
-  const c = (await query('SELECT name, smtp_host, smtp_port, smtp_user, smtp_from, smtp_secure, smtp_pass_enc FROM companies WHERE id=$1', [req.user.companyId])).rows[0] || {};
-  if (!c.smtp_host) return res.status(400).json({ error: 'Save your SMTP settings first.' });
-  const smtp = { host: c.smtp_host, port: c.smtp_port, user: c.smtp_user, from: c.smtp_from, secure: c.smtp_secure, pass: decrypt(c.smtp_pass_enc) };
+  const c = (await query('SELECT name, sender_name, smtp_host, smtp_port, smtp_user, smtp_from, smtp_secure, smtp_pass_enc FROM companies WHERE id=$1', [req.user.companyId])).rows[0] || {};
+  const smtp = c.smtp_host
+    ? { host: c.smtp_host, port: c.smtp_port, user: c.smtp_user, from: c.smtp_from, secure: c.smtp_secure, pass: decrypt(c.smtp_pass_enc) }
+    : { fromName: c.sender_name || c.name };
   const r = await sendTestEmail({ to, smtp, companyName: c.name });
   await audit(req, 'COMPANY_EMAIL_TEST', `${to}: ${r.ok ? 'ok' : 'failed'}`);
   if (!r.ok) return res.status(502).json({ error: r.error || 'Send failed' });

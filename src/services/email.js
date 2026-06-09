@@ -1,17 +1,37 @@
 import nodemailer from 'nodemailer';
 import { config } from '../config.js';
 
-// Resolve effective SMTP settings: a per-company config takes priority, falling
-// back to the platform-wide env config. Returns null when nothing is configured
-// (so callers can report "not configured" instead of silently dropping mail).
+// Resolve effective SMTP settings. A client's own SMTP config takes priority;
+// otherwise we fall back to the platform-wide relay (e.g. Brevo) set via env.
+// Returns null when nothing is configured at all, so callers can report it
+// instead of silently dropping mail.
+//
+// `smtp.fromName` lets a client brand the sender (their company name) even when
+// sending through the shared platform relay: we keep the verified platform
+// address but swap the display name to the client's.
 function resolveSmtp(smtp) {
-  const host = (smtp && smtp.host) || config.smtp.host;
+  const ownHost = smtp && smtp.host;
+  const host = ownHost || config.smtp.host;
   if (!host) return null;
-  const port = Number((smtp && smtp.port) || config.smtp.port || 587);
-  const user = (smtp && smtp.user) || config.smtp.user || '';
-  const pass = (smtp && smtp.pass != null && smtp.pass !== '') ? smtp.pass : config.smtp.pass;
-  const secure = (smtp && smtp.secure != null) ? !!smtp.secure : port === 465;
-  const from = (smtp && smtp.from) || (smtp && smtp.user) || config.smtp.from;
+  const port = Number((ownHost && smtp.port) || config.smtp.port || 587);
+  const user = (ownHost && smtp.user) || config.smtp.user || '';
+  const pass = (ownHost && smtp.pass != null && smtp.pass !== '') ? smtp.pass : config.smtp.pass;
+  const secure = (ownHost && smtp.secure != null) ? !!smtp.secure : port === 465;
+  let from;
+  if (ownHost) {
+    from = smtp.from || smtp.user || config.smtp.from;
+  } else {
+    // Shared platform relay: keep the verified global address, show client's name.
+    const globalFrom = config.smtp.from || user;
+    const name = smtp && smtp.fromName;
+    if (name) {
+      const m = String(globalFrom).match(/<([^>]+)>/);
+      const email = m ? m[1] : globalFrom;
+      from = name + ' <' + email + '>';
+    } else {
+      from = globalFrom;
+    }
+  }
   return { host, port, user, pass, secure, from };
 }
 
@@ -33,12 +53,13 @@ function transportFor(r) {
 /**
  * Send a payslip email with a PDF attachment.
  * @param {object} args
- * @param {object} [args.smtp] - Per-company SMTP settings { host, port, user, pass, from, secure }.
+ * @param {object} [args.smtp] - Mail settings { host?, port?, user?, pass?, from?, secure?, fromName? }.
+ *   When host is omitted, the platform relay is used with fromName as the display name.
  * @returns {Promise<{ok:boolean, error?:string}>}
  */
 export async function sendPayslipEmail({ to, name, period, net, pdfBuffer, slipNo, template, smtp }) {
   const r = resolveSmtp(smtp);
-  if (!r) return { ok: false, error: 'Email sending is not configured. Add your SMTP settings in Settings \u2192 Email.' };
+  if (!r) return { ok: false, error: 'Email sending is not configured. Add your SMTP settings in Settings \u2192 Email, or set the platform relay.' };
   const body = (template || 'Hi {name},\n\nPlease find attached your payslip for {period}. Net pay: {net}.\n\nRegards,\nHR')
     .replaceAll('{name}', name)
     .replaceAll('{period}', period)
@@ -58,7 +79,7 @@ export async function sendPayslipEmail({ to, name, period, net, pdfBuffer, slipN
 }
 
 /**
- * Send a simple test email to verify a company's SMTP settings.
+ * Send a simple test email to verify mail settings (own SMTP or platform relay).
  * @returns {Promise<{ok:boolean, error?:string}>}
  */
 export async function sendTestEmail({ to, smtp, companyName }) {

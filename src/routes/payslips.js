@@ -9,10 +9,16 @@ import { audit } from '../services/audit.js';
 const router = Router();
 router.use(authenticate);
 
-// Build per-company SMTP settings (decrypting the stored password) or null.
+// Build mail settings for a company. Always carries the company's display name
+// so that even on the shared platform relay, payslips show the client's brand.
+// Includes the client's own SMTP credentials only when they configured them.
 function companySmtp(c) {
-  if (!c || !c.smtp_host) return null;
-  return { host: c.smtp_host, port: c.smtp_port, user: c.smtp_user, from: c.smtp_from, secure: c.smtp_secure, pass: decrypt(c.smtp_pass_enc) };
+  const o = { fromName: (c && (c.sender_name || c.name)) || null };
+  if (c && c.smtp_host) {
+    o.host = c.smtp_host; o.port = c.smtp_port; o.user = c.smtp_user;
+    o.from = c.smtp_from; o.secure = c.smtp_secure; o.pass = decrypt(c.smtp_pass_enc);
+  }
+  return o;
 }
 
 async function loadSlipContext(slipId, companyId) {
