@@ -187,3 +187,12 @@ CREATE TABLE IF NOT EXISTS payroll_schedules (
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_schedules_company ON payroll_schedules(company_id);
+
+-- Per-company outgoing email (SMTP) settings. Each tenant sends payslips from
+-- its own mailbox; password is stored encrypted (AES-256-GCM).
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS smtp_host TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS smtp_port INTEGER;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS smtp_user TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS smtp_pass_enc TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS smtp_from TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS smtp_secure BOOLEAN;

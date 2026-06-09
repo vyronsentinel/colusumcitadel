@@ -3,6 +3,8 @@ import { query } from '../db.js';
 import { authenticate, authorize, asyncH } from '../auth/middleware.js';
 import { membershipState } from '../services/membership.js';
 import { audit } from '../services/audit.js';
+import { encrypt, decrypt } from '../util/crypto.js';
+import { sendTestEmail } from '../services/email.js';
 
 const router = Router();
 router.use(authenticate);
@@ -70,6 +72,53 @@ router.put('/schedule', authorize('HR_ADMIN'), asyncH(async (req, res) => {
   }
   await audit(req, 'PAYROLL_SCHEDULE_UPDATED', `${cadence} enabled=${enabled}`);
   res.json(row);
+}));
+
+// ---- Per-company outgoing email (SMTP) settings — HR admin ----
+// The password is never returned to the client; only whether one is set.
+function publicSmtp(c) {
+  return {
+    configured: !!c.smtp_host,
+    host: c.smtp_host || '',
+    port: c.smtp_port || 465,
+    user: c.smtp_user || '',
+    from: c.smtp_from || '',
+    secure: c.smtp_secure == null ? null : !!c.smtp_secure,
+    hasPassword: !!c.smtp_pass_enc,
+  };
+}
+router.get('/email', authorize('HR_ADMIN'), asyncH(async (req, res) => {
+  const c = (await query('SELECT smtp_host, smtp_port, smtp_user, smtp_from, smtp_secure, smtp_pass_enc FROM companies WHERE id=$1', [req.user.companyId])).rows[0] || {};
+  res.json(publicSmtp(c));
+}));
+router.put('/email', authorize('HR_ADMIN'), asyncH(async (req, res) => {
+  const { host, port, user, from, secure, password, disable } = req.body || {};
+  if (disable) {
+    await query('UPDATE companies SET smtp_host=NULL, smtp_port=NULL, smtp_user=NULL, smtp_pass_enc=NULL, smtp_from=NULL, smtp_secure=NULL WHERE id=$1', [req.user.companyId]);
+    await audit(req, 'COMPANY_EMAIL_DISABLED', 'smtp');
+    return res.json({ ok: true, configured: false });
+  }
+  if (!host || !user) return res.status(400).json({ error: 'SMTP host and username are required.' });
+  const portNum = port ? Number(port) : 465;
+  const sets = ['smtp_host=$1', 'smtp_port=$2', 'smtp_user=$3', 'smtp_from=$4', 'smtp_secure=$5'];
+  const vals = [host, portNum, user, (from && String(from).trim()) || user, secure == null ? (portNum === 465) : !!secure];
+  let i = 6;
+  if (password !== undefined && password !== '') { sets.push('smtp_pass_enc=$' + i); i++; vals.push(encrypt(password)); }
+  vals.push(req.user.companyId);
+  await query('UPDATE companies SET ' + sets.join(', ') + ' WHERE id=$' + i, vals);
+  await audit(req, 'COMPANY_EMAIL_UPDATED', host);
+  res.json({ ok: true, configured: true });
+}));
+router.post('/email/test', authorize('HR_ADMIN'), asyncH(async (req, res) => {
+  const to = req.body && req.body.to ? String(req.body.to).trim() : '';
+  if (!to) return res.status(400).json({ error: 'Provide a recipient email to test.' });
+  const c = (await query('SELECT name, smtp_host, smtp_port, smtp_user, smtp_from, smtp_secure, smtp_pass_enc FROM companies WHERE id=$1', [req.user.companyId])).rows[0] || {};
+  if (!c.smtp_host) return res.status(400).json({ error: 'Save your SMTP settings first.' });
+  const smtp = { host: c.smtp_host, port: c.smtp_port, user: c.smtp_user, from: c.smtp_from, secure: c.smtp_secure, pass: decrypt(c.smtp_pass_enc) };
+  const r = await sendTestEmail({ to, smtp, companyName: c.name });
+  await audit(req, 'COMPANY_EMAIL_TEST', `${to}: ${r.ok ? 'ok' : 'failed'}`);
+  if (!r.ok) return res.status(502).json({ error: r.error || 'Send failed' });
+  res.json({ ok: true });
 }));
 
 export default router;

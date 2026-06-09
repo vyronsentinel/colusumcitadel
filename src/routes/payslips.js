@@ -3,10 +3,17 @@ import { query } from '../db.js';
 import { authenticate, authorize, asyncH } from '../auth/middleware.js';
 import { renderPayslipPdf } from '../services/pdf.js';
 import { sendPayslipEmail } from '../services/email.js';
+import { decrypt } from '../util/crypto.js';
 import { audit } from '../services/audit.js';
 
 const router = Router();
 router.use(authenticate);
+
+// Build per-company SMTP settings (decrypting the stored password) or null.
+function companySmtp(c) {
+  if (!c || !c.smtp_host) return null;
+  return { host: c.smtp_host, port: c.smtp_port, user: c.smtp_user, from: c.smtp_from, secure: c.smtp_secure, pass: decrypt(c.smtp_pass_enc) };
+}
 
 async function loadSlipContext(slipId, companyId) {
   const slip = (await query(
@@ -69,6 +76,7 @@ router.post('/run/:runId/email', authorize('HR_ADMIN'), asyncH(async (req, res) 
       to: slip.email, name: `${slip.first_name} ${slip.last_name}`, period: run.period_label,
       net: Number(slip.net_pay).toLocaleString('en-PH', { minimumFractionDigits: 2 }),
       pdfBuffer: pdf, slipNo: slip.slip_no, template: req.body?.template || company.email_template,
+      smtp: companySmtp(company),
     });
     if (r.ok) { sent++; await query("UPDATE payslips SET email_status='SENT', email_at=now() WHERE id=$1", [slip.id]); }
     else { failed++; await query("UPDATE payslips SET email_status='FAILED' WHERE id=$1", [slip.id]); }
@@ -90,7 +98,7 @@ router.post('/run/:runId/resend-failed', authorize('HR_ADMIN'), asyncH(async (re
   for (const slip of slips) {
     if (!slip.email) { failed++; continue; }
     const pdf = await renderPayslipPdf({ company, employee: slip, slip, period: run.period_label });
-    const r = await sendPayslipEmail({ to: slip.email, name: `${slip.first_name} ${slip.last_name}`, period: run.period_label, net: String(slip.net_pay), pdfBuffer: pdf, slipNo: slip.slip_no });
+    const r = await sendPayslipEmail({ to: slip.email, name: `${slip.first_name} ${slip.last_name}`, period: run.period_label, net: String(slip.net_pay), pdfBuffer: pdf, slipNo: slip.slip_no, template: company.email_template, smtp: companySmtp(company) });
     if (r.ok) { sent++; await query("UPDATE payslips SET email_status='SENT', email_at=now() WHERE id=$1", [slip.id]); }
     else failed++;
   }
