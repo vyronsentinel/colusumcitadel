@@ -13,6 +13,7 @@ import reportRoutes from './routes/reports.js';
 import miscRoutes from './routes/misc.js';
 import companyRoutes from './routes/company.js';
 import adminRoutes from './routes/admin.js';
+import teamRoutes from './routes/team.js';
 import { authenticate, requireActiveMembership } from './auth/middleware.js';
 
 export function createApp() {
@@ -37,6 +38,7 @@ export function createApp() {
 
   // Operational routes — require an active company membership.
   const gate = [authenticate, requireActiveMembership];
+  app.use('/api/team', gate, teamRoutes);
   app.use('/api/employees', gate, employeeRoutes);
   app.use('/api/attendance', gate, attendanceRoutes);
   app.use('/api/payroll', gate, payrollRoutes);
