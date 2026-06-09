@@ -157,3 +157,33 @@ CREATE INDEX IF NOT EXISTS idx_payslips_run ON payslips(run_id);
 CREATE INDEX IF NOT EXISTS idx_payslips_emp ON payslips(employee_id);
 CREATE INDEX IF NOT EXISTS idx_runs_company ON payroll_runs(company_id);
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at DESC);
+
+-- ===== SaaS multi-tenant: membership + branding (idempotent migration) =====
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS slug TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS address TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS brand_color TEXT DEFAULT '#27406e';
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS sender_name TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS email_template TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS contact_name TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS contact_phone TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'TRIAL';
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS membership_status TEXT NOT NULL DEFAULT 'TRIAL';
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS membership_expires_at TIMESTAMPTZ;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS employee_limit INTEGER NOT NULL DEFAULT 15;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_companies_slug ON companies(slug) WHERE slug IS NOT NULL;
+
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('HR_ADMIN','FINANCE','MANAGER','EMPLOYEE','SUPER_ADMIN'));
+
+CREATE TABLE IF NOT EXISTS payroll_schedules (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id   UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  cadence      TEXT NOT NULL DEFAULT 'SEMIMONTHLY',
+  day_of_month INTEGER,
+  auto_email   BOOLEAN NOT NULL DEFAULT true,
+  enabled      BOOLEAN NOT NULL DEFAULT false,
+  last_run_at  TIMESTAMPTZ,
+  next_run_on  DATE,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_schedules_company ON payroll_schedules(company_id);

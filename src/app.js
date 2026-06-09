@@ -11,6 +11,9 @@ import payrollRoutes from './routes/payroll.js';
 import payslipRoutes from './routes/payslips.js';
 import reportRoutes from './routes/reports.js';
 import miscRoutes from './routes/misc.js';
+import companyRoutes from './routes/company.js';
+import adminRoutes from './routes/admin.js';
+import { authenticate, requireActiveMembership } from './auth/middleware.js';
 
 export function createApp() {
   const app = express();
@@ -23,17 +26,23 @@ export function createApp() {
 
   // Global rate limit; auth endpoints get a stricter limiter.
   app.use('/api/', rateLimit({ windowMs: 60_000, max: 300, standardHeaders: true, legacyHeaders: false }));
-  const authLimiter = rateLimit({ windowMs: 15 * 60_000, max: 20, standardHeaders: true, legacyHeaders: false });
+  const authLimiter = rateLimit({ windowMs: 15 * 60_000, max: 30, standardHeaders: true, legacyHeaders: false });
 
   app.get('/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 
+  // Public auth (login/signup/refresh) + account + owner console: NOT membership-gated.
   app.use('/api/auth', authLimiter, authRoutes);
-  app.use('/api/employees', employeeRoutes);
-  app.use('/api/attendance', attendanceRoutes);
-  app.use('/api/payroll', payrollRoutes);
-  app.use('/api/payslips', payslipRoutes);
-  app.use('/api/reports', reportRoutes);
-  app.use('/api', miscRoutes);
+  app.use('/api/company', companyRoutes);
+  app.use('/api/admin', adminRoutes);
+
+  // Operational routes — require an active company membership.
+  const gate = [authenticate, requireActiveMembership];
+  app.use('/api/employees', gate, employeeRoutes);
+  app.use('/api/attendance', gate, attendanceRoutes);
+  app.use('/api/payroll', gate, payrollRoutes);
+  app.use('/api/payslips', gate, payslipRoutes);
+  app.use('/api/reports', gate, reportRoutes);
+  app.use('/api', gate, miscRoutes);
 
   // 404
   app.use((req, res) => res.status(404).json({ error: 'Not found' }));

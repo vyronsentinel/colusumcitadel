@@ -64,6 +64,11 @@ router.post('/', authorize('HR_ADMIN'), asyncH(async (req, res) => {
   const p = empSchema.safeParse(req.body);
   if (!p.success) return res.status(400).json({ error: 'Invalid payload', details: p.error.flatten() });
   const d = p.data;
+  const lim = (await query('SELECT employee_limit FROM companies WHERE id=$1', [req.user.companyId])).rows[0]?.employee_limit || 0;
+  if (lim) {
+    const cnt = (await query("SELECT COUNT(*)::int AS n FROM employees WHERE company_id=$1 AND status<>'TERMINATED'", [req.user.companyId])).rows[0].n;
+    if (cnt >= lim) return res.status(403).json({ error: `Employee limit reached (${lim}). Upgrade your plan to add more employees.` });
+  }
   const basic = d.basic_salary || 0;
   const hourly = Math.round((basic / 22 / 8) * 100) / 100;
   const empNo = d.emp_no || ('EMP-' + Date.now().toString().slice(-6));

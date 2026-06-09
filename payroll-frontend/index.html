@@ -126,6 +126,7 @@ const DEFAULT_API = 'https://payrollpro-api.onrender.com';
 let API = localStorage.getItem('pp_api') || DEFAULT_API;
 let token = localStorage.getItem('pp_token') || null;
 let me = JSON.parse(localStorage.getItem('pp_me') || 'null');
+let departments = [];
 
 const ROLE_LABEL = {HR_ADMIN:'HR Admin',FINANCE:'Finance',MANAGER:'Manager',EMPLOYEE:'Employee'};
 const $ = (id)=>document.getElementById(id);
@@ -230,10 +231,61 @@ function statusChip(s){const m={PREPARATION:'neutral',HR_REVIEW:'warn',FINANCE_A
 async function renderEmployees(){
   try{
     const list=await api('/api/employees');
-    let rows=list.map(e=>`<tr><td>${esc(e.emp_no)}</td><td><b>${esc(e.first_name)} ${esc(e.last_name)}</b><br><span class="muted">${esc(e.email||'')}</span></td><td>${esc(e.position||'—')}</td><td>${esc(e.branch||'—')}</td><td><span class="chip ${e.status==='ACTIVE'?'ok':'neutral'}">${e.status}</span></td><td class="peso">${peso(e.basic_salary)}</td></tr>`).join('');
-    $('view').innerHTML=`<div class="toolbar"><div class="muted">${list.length} employees</div></div>
+    const isHR = me.role==='HR_ADMIN';
+    let rows=list.map(e=>`<tr ${isHR?`onclick="empModal('${e.id}')" style="cursor:pointer"`:''}><td>${esc(e.emp_no)}</td><td><b>${esc(e.first_name)} ${esc(e.last_name)}</b><br><span class="muted">${esc(e.email||'')}</span></td><td>${esc(e.position||'—')}</td><td>${esc(e.branch||'—')}</td><td><span class="chip ${e.status==='ACTIVE'?'ok':'neutral'}">${e.status}</span></td><td class="peso">${peso(e.basic_salary)}</td></tr>`).join('');
+    $('view').innerHTML=`<div class="toolbar">${isHR?'<button class="btn sm" onclick="empModal()">+ Add employee</button>':''}<div class="spacer"></div><div class="muted">${list.length} employees${isHR?' · click a row to edit':''}</div></div>
       <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>ID</th><th>Name</th><th>Position</th><th>Branch</th><th>Status</th><th>Basic salary</th></tr></thead><tbody>${rows||'<tr><td colspan=6 class=empty>No employees</td></tr>'}</tbody></table></div>`;
   }catch(e){errBox(e);}
+}
+async function empModal(id){
+  if(!departments.length){ try{ departments=await api('/api/departments'); }catch{} }
+  let e={status:'PROBATIONARY',pay_type:'MONTHLY'};
+  if(id){ try{ e=await api('/api/employees/'+id); }catch(err){ toast(err.message); return; } }
+  const dept=`<select id="f_department_id"><option value="">— Department —</option>${departments.map(d=>`<option value="${d.id}" ${d.id===e.department_id?'selected':''}>${esc(d.name)}</option>`).join('')}</select>`;
+  const sel=(id2,val,opts)=>`<select id="${id2}">${opts.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}</select>`;
+  const f=(lbl,id2,val,type='text')=>`<label>${lbl}</label><input id="${id2}" type="${type}" value="${val==null?'':esc(val)}"/>`;
+  openModal(id?('Edit · '+esc(e.first_name)+' '+esc(e.last_name)):'Add employee',`
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+      <div>${f('First name','f_first_name',e.first_name)}</div>
+      <div>${f('Last name','f_last_name',e.last_name)}</div>
+      <div>${f('Employee no.','f_emp_no',e.emp_no)}</div>
+      <div>${f('Email','f_email',e.email,'email')}</div>
+      <div>${f('Position','f_position',e.position)}</div>
+      <div>${f('Branch','f_branch',e.branch)}</div>
+      <div><label>Department</label>${dept}</div>
+      <div><label>Status</label>${sel('f_status',e.status,['ACTIVE','PROBATIONARY','ON_LEAVE','RESIGNED','TERMINATED'])}</div>
+      <div><label>Pay type</label>${sel('f_pay_type',e.pay_type,['MONTHLY','HOURLY'])}</div>
+      <div>${f('Basic salary (₱/mo)','f_basic_salary',e.basic_salary,'number')}</div>
+      <div>${f('Allowance (₱)','f_allowance',e.allowance,'number')}</div>
+      <div>${f('Leave credits (days)','f_leave_credits',e.leave_credits,'number')}</div>
+    </div>
+    <div class="section-title" style="margin-top:14px">Government & bank IDs</div>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px">
+      <div>${f('SSS','f_sss',e.sss)}</div><div>${f('PhilHealth','f_philhealth',e.philhealth)}</div>
+      <div>${f('Pag-IBIG','f_pagibig',e.pagibig)}</div><div>${f('TIN','f_tin',e.tin)}</div>
+      <div>${f('Bank account','f_bank',e.bank)}</div>
+    </div>`,
+    `<div class="row">${id?`<button class="btn ghost sm danger" onclick="offboardEmp('${id}')">Offboard</button>`:''}<span class="spacer"></span><button class="btn sm" onclick="saveEmp(${id?`'${id}'`:''})">${id?'Save changes':'Create employee'}</button></div>`);
+}
+async function saveEmp(id){
+  const v=(x)=>{const el=$(x);return el?el.value:undefined;};
+  const num=(x)=>{const s=v(x);return s===''||s==null?undefined:Number(s);};
+  const body={first_name:v('f_first_name'),last_name:v('f_last_name'),emp_no:v('f_emp_no')||undefined,email:v('f_email'),
+    position:v('f_position'),branch:v('f_branch'),department_id:v('f_department_id')||null,status:v('f_status'),pay_type:v('f_pay_type'),
+    basic_salary:num('f_basic_salary'),allowance:num('f_allowance'),leave_credits:num('f_leave_credits'),
+    sss:v('f_sss'),philhealth:v('f_philhealth'),pagibig:v('f_pagibig'),tin:v('f_tin'),bank:v('f_bank')};
+  if(!body.first_name||!body.last_name){ toast('First and last name are required'); return; }
+  const btn=event.target; btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Saving…';
+  try{
+    if(id) await api('/api/employees/'+id,{method:'PUT',body:JSON.stringify(body)});
+    else await api('/api/employees',{method:'POST',body:JSON.stringify(body)});
+    closeModal(); toast(id?'Employee updated':'Employee added'); renderEmployees();
+  }catch(err){ btn.disabled=false; btn.innerHTML=id?'Save changes':'Create employee'; toast(err.message); }
+}
+async function offboardEmp(id){
+  if(!confirm('Offboard this employee? They will be marked RESIGNED.')) return;
+  try{ await api('/api/employees/'+id+'/offboard',{method:'POST'}); closeModal(); toast('Employee offboarded'); renderEmployees(); }
+  catch(err){ toast(err.message); }
 }
 
 async function renderPayroll(){

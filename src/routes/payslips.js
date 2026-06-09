@@ -68,7 +68,7 @@ router.post('/run/:runId/email', authorize('HR_ADMIN'), asyncH(async (req, res) 
     const r = await sendPayslipEmail({
       to: slip.email, name: `${slip.first_name} ${slip.last_name}`, period: run.period_label,
       net: Number(slip.net_pay).toLocaleString('en-PH', { minimumFractionDigits: 2 }),
-      pdfBuffer: pdf, slipNo: slip.slip_no, template: req.body?.template,
+      pdfBuffer: pdf, slipNo: slip.slip_no, template: req.body?.template || company.email_template,
     });
     if (r.ok) { sent++; await query("UPDATE payslips SET email_status='SENT', email_at=now() WHERE id=$1", [slip.id]); }
     else { failed++; await query("UPDATE payslips SET email_status='FAILED' WHERE id=$1", [slip.id]); }

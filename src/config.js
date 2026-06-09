@@ -17,18 +17,27 @@ export const config = {
     refreshTtl: process.env.JWT_REFRESH_TTL || '7d',
   },
   fieldEncryptionKey: req('FIELD_ENCRYPTION_KEY', '0'.repeat(64)),
-  totpIssuer: process.env.TOTP_ISSUER || 'PayrollPro',
+  totpIssuer: process.env.TOTP_ISSUER || 'Citadel Collusum',
+  platform: { name: process.env.PLATFORM_NAME || 'Citadel Collusum' },
   smtp: {
     host: process.env.SMTP_HOST || '',
     port: Number(process.env.SMTP_PORT || 587),
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
-    from: process.env.SMTP_FROM || 'PayrollPro HR <hr@example.com>',
+    from: process.env.SMTP_FROM || 'Citadel Collusum Payroll <hr@example.com>',
   },
   corsOrigin: process.env.CORS_ORIGIN || '*',
   bootstrap: {
     adminEmail: process.env.BOOTSTRAP_ADMIN_EMAIL || 'admin@acme.ph',
     adminPassword: process.env.BOOTSTRAP_ADMIN_PASSWORD || 'ChangeMe!2024',
+  },
+  superAdmin: {
+    email: process.env.SUPERADMIN_EMAIL || 'owner@citadelcollusum.com',
+    password: process.env.SUPERADMIN_PASSWORD || process.env.BOOTSTRAP_ADMIN_PASSWORD || 'ChangeMe!2024',
+  },
+  saas: {
+    trialDays: Number(process.env.TRIAL_DAYS || 14),
+    trialEmployeeLimit: Number(process.env.TRIAL_EMPLOYEE_LIMIT || 10),
   },
   isProd: (process.env.NODE_ENV || 'development') === 'production',
 };

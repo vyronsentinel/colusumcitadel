@@ -10,6 +10,16 @@ const POSITIONS = ['Associate', 'Senior Associate', 'Supervisor', 'Manager', 'Di
 async function main() {
   await migrate();
 
+  // Always ensure the platform super admin exists (idempotent across re-runs).
+  {
+    const spw = await bcrypt.hash(config.superAdmin.password, 10);
+    await query(
+      "INSERT INTO users (email, password_hash, role) VALUES ($1,$2,'SUPER_ADMIN') ON CONFLICT (email) DO NOTHING",
+      [config.superAdmin.email, spw],
+    );
+    console.log(`\u2713 Super admin ensured: ${config.superAdmin.email}`);
+  }
+
   // Idempotent: skip if already seeded.
   const existing = await query('SELECT COUNT(*)::int AS n FROM companies');
   if (existing.rows[0].n > 0) {
@@ -19,8 +29,9 @@ async function main() {
   }
 
   const company = (await query(
-    'INSERT INTO companies (name, tin, logo) VALUES ($1,$2,$3) RETURNING *',
-    ['Acme Technologies Inc.', '009-123-456-000', 'A'],
+    `INSERT INTO companies (name, tin, logo, address, plan, membership_status, membership_expires_at, employee_limit, brand_color)
+     VALUES ($1,$2,$3,$4,'ENTERPRISE','ACTIVE', now() + interval '3650 days', 1000, '#27406e') RETURNING *`,
+    ['Acme Technologies Inc.', '009-123-456-000', 'A', 'Makati HQ, Metro Manila'],
   )).rows[0];
 
   const deptNames = ['Engineering', 'Sales', 'Human Resources', 'Finance', 'Operations', 'Support'];
